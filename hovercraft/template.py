@@ -1,5 +1,9 @@
 import os
-import configparser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
+    from StringIO import StringIO
 import shutil
 from pkg_resources import resource_string, resource_filename
 
@@ -63,7 +67,10 @@ class Template(object):
         config = configparser.ConfigParser()
         if self.builtin_template:
             cfg_string = resource_string(__name__, self.template + 'template.cfg').decode('UTF-8')
-            config.read_string(cfg_string)
+            if hasattr(config, 'read_string'): # Python3
+                config.read_string(cfg_string)
+            else: # Python2
+                config.readfp(StringIO(cfg_string))
             self.template_root = None
         else:
             if os.path.isdir(self.template):
@@ -74,7 +81,11 @@ class Template(object):
                 config_file = self.template
             config.read(config_file)
 
-        self.config = config['hovercraft']
+        try: # Python3
+            self.config = config['hovercraft']
+        except AttributeError:
+            self.config = dict([(k, config.get('hovercraft', k))
+                                for k in config.options('hovercraft')])
 
     def _load_template_files(self):
 
